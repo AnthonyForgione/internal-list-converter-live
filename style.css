@@ -3,7 +3,7 @@
 
 body {
   font-family: 'Public Sans', sans-serif;
-  background-color: #f5f7fa; /* light neutral background */
+  background-color: #f5f7fa;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -24,21 +24,29 @@ body {
 h2 {
   text-align: center;
   margin-bottom: 25px;
-  color: #0E2638; /* Dark Indigo heading */
+  color: #0E2638;
   font-weight: 600;
   font-size: 24px;
 }
 
-input[type="file"] {
-  display: block;
-  width: 100%;
-  padding: 12px;
+/* Drag & drop area */
+.drop-zone {
+  border: 2px dashed #015684; /* Catalyst */
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  color: #0E2638;
   margin-bottom: 20px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
+  transition: background 0.2s, border-color 0.2s;
 }
 
+.drop-zone.dragover {
+  background-color: #e6f0fa; /* light highlight */
+  border-color: #013d5b;     /* darker border on dragover */
+}
+
+/* Convert button */
 button#convertBtn {
   display: block;
   width: 100%;
@@ -54,10 +62,11 @@ button#convertBtn {
 }
 
 button#convertBtn:hover {
-  background-color: #013d5b; /* slightly darker on hover */
+  background-color: #013d5b;
   transform: translateY(-1px);
 }
 
+/* Output area */
 pre#output {
   background-color: #f0f3f7;
   padding: 15px;
@@ -70,11 +79,12 @@ pre#output {
   border: 1px solid #d1d9e0;
 }
 
+/* Download link */
 a#downloadLink {
   display: block;
   text-align: center;
   margin-top: 15px;
-  color: #015684; /* Catalyst link color */
+  color: #015684;
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
