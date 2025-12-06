@@ -20,9 +20,9 @@ body {
 /* HEADER: Title left, Logo right */
 .header-flex {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: row;     /* ensure horizontal layout */
+  justify-content: space-between; /* title left, logo right */
+  align-items: center;     /* vertically align title and logo */
   margin-bottom: 15px;
 }
 
@@ -34,8 +34,8 @@ body {
 }
 
 .header-flex .app-logo {
-  height: 40px;      
-  width: auto;       
+  height: 40px;      /* fixed height */
+  width: auto;       /* keep aspect ratio */
   object-fit: contain;
 }
 
@@ -116,14 +116,6 @@ body {
   display: none;
 }
 
-/* FILE STATUS */
-.file-status {
-  margin-top: 8px;
-  font-size: 14px;
-  color: #015684;
-  font-weight: 500;
-}
-
 /* CONVERT BUTTON */
 .convert-btn {
   display: inline-block;
@@ -137,12 +129,7 @@ body {
   border: none;
 }
 
-.convert-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.convert-btn:hover:enabled {
+.convert-btn:hover {
   opacity: 0.9;
 }
 
