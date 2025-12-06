@@ -33,4 +33,15 @@
     </a>
 
     <!-- File input and convert button -->
-    <input typ
+    <input type="file" id="fileInput" accept=".xls,.xlsx">
+    <button id="convertBtn" type="button">Convert</button>
+
+    <!-- Output JSONL -->
+    <pre id="output"></pre>
+    <a id="downloadLink" style="display:none;">Download JSONL</a>
+  </div>
+
+  <!-- Link your JS -->
+  <script src="script.js"></script>
+</body>
+</html>
