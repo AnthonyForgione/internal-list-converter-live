@@ -1,120 +1,140 @@
-/* GLOBAL ---------------------------------------------------- */
 body {
-  font-family: 'Public Sans', sans-serif;
-  background: #F7F9FA;
+  font-family: 'Roboto', sans-serif;
+  background: #f3f5f7;
   margin: 0;
   padding: 40px;
-  color: #0E2638;
+  display: flex;
+  justify-content: center;
+  color: #333;
 }
 
 .container {
-  max-width: 850px;
-  margin: auto;
   background: white;
-  padding: 40px;
-  border-radius: 14px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  padding: 30px;
+  border-radius: 12px;
+  width: 700px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.logo-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.app-logo {
+  height: 60px;
+  object-fit: contain;
 }
 
 h1 {
-  font-size: 32px;
-  margin-bottom: 5px;
-}
-
-.subtitle {
-  font-size: 16px;
-  color: #4F6781;
-  margin-bottom: 30px;
-}
-
-h2 {
-  margin-bottom: 12px;
-  color: #0E2638;
-  font-size: 22px;
-}
-
-.small-title {
-  margin: 10px 0 5px;
-  font-size: 16px;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 28px;
   font-weight: 600;
 }
 
-/* STEP BLOCKS ------------------------------------------------ */
-.step-block {
-  margin-bottom: 40px;
-  padding-bottom: 25px;
-  border-bottom: 1px solid #E1E6EB;
+.sub-description {
+  text-align: center;
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 25px;
 }
 
-/* COLOR LIST -------------------------------------------------- */
-.color-list {
-  padding-left: 20px;
-  margin-bottom: 20px;
-  line-height: 1.6;
+.step-box {
+  margin-bottom: 35px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 10px;
+  border: 1px solid #e3e3e3;
 }
 
-.color-list span {
-  padding: 2px 6px;
+.step-box h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.color-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+
+.color-bullets li {
+  margin-bottom: 10px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.legend {
+  width: 14px;
+  height: 14px;
   border-radius: 4px;
-  font-weight: 500;
-  color: white;
-}
-
-.mandatory { background-color: #FFA500; }
-.person-only { background-color: #28a745; }
-.common {
-  background-color: #ffffff;
-  color: #0E2638 !important;
-  border: 1px solid #d0d0d0;
-}
-
-/* BUTTONS ----------------------------------------------------- */
-.button-primary {
+  margin-right: 10px;
   display: inline-block;
-  background: #015684;
+  border: 1px solid #ccc;
+}
+
+.legend.orange { background: #ffcc99; }
+.legend.green { background: #c6efce; }
+.legend.white { background: white; }
+
+.download-template {
+  display: inline-block;
+  background: #0052cc;
   color: white;
-  padding: 12px 22px;
-  border-radius: 8px;
+  padding: 10px 16px;
+  border-radius: 6px;
   text-decoration: none;
-  font-weight: 600;
-  margin-top: 10px;
-  transition: 0.25s;
+  font-weight: 500;
 }
 
-.button-primary:hover {
-  background: #013d5b;
-  transform: translateY(-2px);
+.file-upload-label {
+  display: inline-block;
+  background: #4caf50;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 10px;
 }
 
-/* FILE UPLOAD ------------------------------------------------- */
 #fileInput {
   display: none;
 }
 
-.file-upload {
+.convert-btn {
   display: inline-block;
-  background: #ffffff;
-  border: 2px dashed #015684;
-  color: #015684;
-  padding: 20px;
-  font-weight: 600;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.25s;
-  margin-bottom: 15px;
-}
-
-.file-upload:hover {
-  background: #E9F4FA;
-}
-
-/* OUTPUT BOX -------------------------------------------------- */
-pre {
-  background: #F4F6F8;
-  border: 1px solid #D8E0E6;
-  padding: 15px;
+  background: #ff9800;
+  color: white;
+  padding: 10px 16px;
   border-radius: 6px;
-  max-height: 350px;
-  overflow: auto;
-  margin-top: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-left: 10px;
+  border: none;
+}
+
+.convert-btn:hover {
+  opacity: 0.9;
+}
+
+.download-jsonl {
+  display: block;
+  margin-top: 20px;
+  font-weight: 500;
+  color: #0052cc;
+  text-decoration: none;
+}
+
+pre {
+  margin-top: 20px;
+  background: #272822;
+  color: #f8f8f2;
+  padding: 12px;
+  border-radius: 6px;
+  max-height: 250px;
+  overflow-y: auto;
 }
