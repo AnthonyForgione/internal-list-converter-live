@@ -1,5 +1,5 @@
 // script.js
-// Browser-side XLS/XLSX -> JSONL converter fully aligned with Python/Colab logic.
+// Browser-side XLS/XLSX -> JSONL converter fully aligned with Python/Colab logic
 
 (function () {
   // --- UTILITY FUNCTIONS ---
@@ -22,13 +22,14 @@
     return [String(value)];
   }
 
+  function _to_string_id(value) {
+    if (typeof value === 'number' && Number.isInteger(value)) return String(value);
+    return String(value);
+  }
+
   function _to_unix_timestamp_ms(value) {
     if (isEmpty(value)) return null;
     if (value instanceof Date) return isNaN(value.getTime()) ? null : value.getTime();
-    if (typeof value === 'number') {
-      if (value > 1e12) return Math.floor(value);
-      if (value > 1e9) return Math.floor(value * 1000);
-    }
     const parsed = Date.parse(String(value));
     if (!isNaN(parsed)) return parsed;
     return null;
@@ -41,16 +42,14 @@
 
   function normalizeRowKeys(row) {
     const out = {};
-    for (const [k, v] of Object.entries(row)) {
-      out[normalizeKey(k)] = v;
-    }
+    for (const [k, v] of Object.entries(row)) out[normalizeKey(k)] = v;
     return out;
   }
 
   // --- MAIN TRANSFORMATION ---
   function transformRowToClientJson(rowRaw) {
     const row = normalizeRowKeys(rowRaw);
-    const clientData = {objectType: 'client'};
+    const clientData = { objectType: 'client' };
 
     function addFieldIfNotEmpty(key, value) {
       if (!isEmpty(value)) clientData[key] = value;
@@ -61,7 +60,8 @@
     addFieldIfNotEmpty('entityType', row['entityType']);
     addFieldIfNotEmpty('status', row['status']);
 
-    const entityTypeUpper = !isEmpty(row['entityType']) ? String(row['entityType']).toUpperCase() : null;
+    const entityType = row['entityType'];
+    const entityTypeUpper = !isEmpty(entityType) ? String(entityType).toUpperCase() : null;
 
     // 2. Name fields
     if (entityTypeUpper === 'ORGANISATION') {
@@ -73,7 +73,7 @@
       addFieldIfNotEmpty('surname', row['surname']);
     }
 
-    // 3. Titles and suffixes (array of strings)
+    // 3. Titles and suffixes
     addFieldIfNotEmpty('titles', _to_string_list(row['titles']));
     addFieldIfNotEmpty('suffixes', _to_string_list(row['suffixes']));
 
@@ -97,7 +97,7 @@
       addFieldIfNotEmpty('dateOfIncorporation', isEmpty(row['dateOfIncorporation']) ? row['dateOfIncorporation'] : String(row['dateOfIncorporation']));
     }
 
-    // 6. Assessment Required and review fields
+    // 6. AssessmentRequired and review
     const assessmentRequiredRawValue = row['assessmentRequired'];
     let assessmentRequiredBoolean = false;
     if (!isEmpty(assessmentRequiredRawValue)) {
@@ -126,10 +126,25 @@
     // 8. Segment
     addFieldIfNotEmpty('segment', isEmpty(row['segment']) ? row['segment'] : String(row['segment']));
 
-    // 9. Aliases
+    // 9. Identity numbers
+    const identityNumbers = [];
+    if (entityTypeUpper === 'ORGANISATION') {
+      if (!isEmpty(row['Duns Number'])) identityNumbers.push({type:'duns', value:_to_string_id(row['Duns Number'])});
+      if (!isEmpty(row['National Tax No.'])) identityNumbers.push({type:'tax_no', value:_to_string_id(row['National Tax No.'])});
+      if (!isEmpty(row['Legal Entity Identifier (LEI)'])) identityNumbers.push({type:'lei', value:_to_string_id(row['Legal Entity Identifier (LEI)'])});
+    }
+    if (entityTypeUpper === 'PERSON') {
+      if (!isEmpty(row['National ID'])) identityNumbers.push({type:'national_id', value:_to_string_id(row['National ID'])});
+      if (!isEmpty(row['Driving Licence No.'])) identityNumbers.push({type:'driving_licence', value:_to_string_id(row['Driving Licence No.'])});
+      if (!isEmpty(row['Social Security Number'])) identityNumbers.push({type:'ssn', value:_to_string_id(row['Social Security Number'])});
+      if (!isEmpty(row['Passport No.'])) identityNumbers.push({type:'passport_no', value:_to_string_id(row['Passport No.'])});
+    }
+    if (identityNumbers.length > 0) clientData.identityNumbers = identityNumbers;
+
+    // 10. Aliases
+    const aliasesList = [];
     const aliasColumns = ['aliases1','aliases2','aliases3','aliases4'];
     const aliasNameTypes = {'aliases1':'AKA1','aliases2':'AKA2','aliases3':'AKA3','aliases4':'AKA4'};
-    const aliasesList = [];
     for (const col of aliasColumns) {
       const val = row[col];
       if (!isEmpty(val)) {
@@ -140,7 +155,7 @@
     }
     if (aliasesList.length > 0) clientData.aliases = aliasesList;
 
-    // 10. Security
+    // 11. Security
     const securityEnabled = row['Security Enabled'];
     if (!isEmpty(securityEnabled) && ['true','t','1','yes','y'].includes(String(securityEnabled).toLowerCase())) {
       const securityTags = {};
@@ -150,7 +165,7 @@
       clientData.security = securityTags;
     }
 
-    // 11. AssessmentRequired last to preserve field order
+    // 12. assessmentRequired last to preserve order
     if (!isEmpty(assessmentRequiredRawValue)) addFieldIfNotEmpty('assessmentRequired', assessmentRequiredBoolean);
 
     return clientData;
@@ -165,22 +180,26 @@
 
     convertBtn.addEventListener('click', () => {
       if (!fileInput.files || fileInput.files.length === 0) return alert('Please choose an XLS/XLSX file first.');
+
       const reader = new FileReader();
       reader.onload = function (e) {
         const data = e.target.result;
         const workbook = XLSX.read(data, {type:'array', cellDates:true});
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(firstSheet, {defval:null, raw:false});
+
         const transformed = rows.map(transformRowToClientJson).filter(rec => {
           const hasEntityType = rec.entityType && !isEmpty(rec.entityType);
           const hasNameInfo = ['name','forename','surname','companyName'].some(k => rec[k] && !isEmpty(rec[k]));
           return hasEntityType || hasNameInfo;
         });
+
         if (!transformed.length) {
           outputEl.textContent = 'No valid rows found for conversion.';
           downloadLink.style.display = 'none';
           return;
         }
+
         const jsonlContent = transformed.map(r => JSON.stringify(r)).join('\n');
         outputEl.textContent = jsonlContent.slice(0,4000) + (jsonlContent.length>4000?'\n\n...preview truncated...':'');
         const blob = new Blob([jsonlContent], {type:'application/json'});
@@ -190,6 +209,7 @@
         downloadLink.style.display = 'inline-block';
         downloadLink.textContent = 'Download JSONL file';
       };
+
       reader.readAsArrayBuffer(fileInput.files[0]);
     });
   }
