@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>ASAM Client Import Converter</title>
-
+  
   <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
+  
   <!-- Link your CSS -->
   <link rel="stylesheet" href="style.css">
 
@@ -17,7 +17,7 @@
 
   <div class="container">
 
-    <!-- HEADER -->
+    <!-- HEADER: Title Left, Logo Right -->
     <div class="header-flex">
       <h1>ASAM Client Import Converter</h1>
       <img src="logo.png" alt="Company Logo" class="app-logo">
@@ -33,9 +33,9 @@
 
       <h3>File Color Code Description</h3>
       <ul class="color-bullets">
-        <li><span class="legend orange"></span> Orange: Mandatory fields.</li>
-        <li><span class="legend green"></span> Green: Person-specific fields.</li>
-        <li><span class="legend white"></span> White: Organisation or non-mandatory fields.</li>
+        <li><span class="legend orange"></span> Orange: Mandatory fields that must be completed.</li>
+        <li><span class="legend green"></span> Green: Fields to be used only when the entity type is “Person.”</li>
+        <li><span class="legend white"></span> White: Common non-mandatory fields or fields used only for the “Organisation” entity type.</li>
       </ul>
 
       <a href="Simplified_Client_Import_Template.xlsx" class="download-template" download>Download XLS Template</a>
@@ -59,19 +59,19 @@
     <section class="step-box">
       <h2>Step 3: Upload the JSONL file in ASAM</h2>
 
+      <p>Explanations:</p>
       <ol class="asam-steps">
         <li>Open ASAM.</li>
         <li>Go to Settings.</li>
-        <li>Process the client upload by entering a job name, uploading the JSONL file, and clicking Upload.</li>
-        <li>Once processed, a new entry will appear in the Job History.</li>
+        <li>Process the client upload by entering a job name, uploading the JSONL file to ASAM, and clicking Upload.</li>
+        <li>Once processed, a new entry will appear in the Job History, where you can view the results.</li>
       </ol>
 
-      <p>For more details about Client Upload and Job History, refer to the user guides.</p>
+      <p>For more details about Client Upload and Job History, please refer to the user guides.</p>
     </section>
 
   </div>
 
-  <!-- Script must come after HTML elements -->
   <script src="script.js"></script>
 </body>
 </html>
