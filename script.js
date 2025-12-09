@@ -1,5 +1,5 @@
 // script.js
-// Browser-side XLS/XLSX -> JSONL converter adapted from the user's Python logic.
+// Browser-side XLS/XLSX -> JSONL converter adapted from Python logic.
 // Requires SheetJS (xlsx.full.min.js) loaded in index.html.
 
 (function () {
@@ -25,9 +25,7 @@
   function _to_string_list(value) {
     if (isEmpty(value)) return null;
     if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
-    if (typeof value === 'string') {
-      return value.split(',').map(s => s.trim()).filter(Boolean);
-    }
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean);
     return [String(value)];
   }
 
@@ -107,11 +105,61 @@
       addFieldIfNotEmpty('dateOfIncorporation', row['dateOfIncorporation'] ? String(row['dateOfIncorporation']) : null);
     }
 
+    // assessmentRequired boolean parsing
+    const assessmentRequiredRawValue = row['assessmentRequired'];
+    let assessmentRequiredBoolean = false;
+    if (!isEmpty(assessmentRequiredRawValue)) {
+      const rawStr = String(assessmentRequiredRawValue).toLowerCase();
+      assessmentRequiredBoolean = ['true','1','1.0','t','yes','y'].includes(rawStr);
+    }
+    if (assessmentRequiredBoolean) addFieldIfNotEmpty('lastReviewed', _to_unix_timestamp_ms(row['lastReviewed']));
+    if (!isEmpty(row['periodicReviewStartDate'])) addFieldIfNotEmpty('periodicReviewStartDate', _to_unix_timestamp_ms(row['periodicReviewStartDate']));
+    addFieldIfNotEmpty('periodicReviewPeriod', row['periodicReviewPeriod'] ? String(row['periodicReviewPeriod']) : null);
+    if (!isEmpty(assessmentRequiredRawValue)) addFieldIfNotEmpty('assessmentRequired', assessmentRequiredBoolean);
+
     // Addresses
     const currentAddress = {};
     ['Address line1','Address line2','Address line3','Address line4','poBox','city','state','province','postcode','country','countryCode']
-      .forEach(k => { if (!isEmpty(row[k])) currentAddress[k==='countryCode'?k:(k==='poBox'?'poBox':k.replace(' ','').toLowerCase())] = String(row[k]); });
+      .forEach(k => { if (!isEmpty(row[k])) currentAddress[k==='countryCode'?k:(k==='poBox'?'poBox':k.replace(/\s+/g,'').toLowerCase())] = String(row[k]); });
     if (Object.keys(currentAddress).length > 0) addFieldIfNotEmpty('addresses', [currentAddress]);
+
+    // identityNumbers
+    const identityNumbersList = [];
+    if (entityTypeUpper === 'ORGANISATION' || entityTypeUpper === 'ORGANIZATION') {
+      if (!isEmpty(row['Duns Number'])) identityNumbersList.push({type:'duns', value: _to_string_id(row['Duns Number'])});
+      if (!isEmpty(row['National Tax No.'])) identityNumbersList.push({type:'tax_no', value: _to_string_id(row['National Tax No.'])});
+      if (!isEmpty(row['Legal Entity Identifier (LEI)'])) identityNumbersList.push({type:'lei', value: _to_string_id(row['Legal Entity Identifier (LEI)'])});
+    } else if (entityTypeUpper === 'PERSON') {
+      if (!isEmpty(row['National ID'])) identityNumbersList.push({type:'national_id', value: _to_string_id(row['National ID'])});
+      if (!isEmpty(row['Driving Licence No.'])) identityNumbersList.push({type:'driving_licence', value: _to_string_id(row['Driving Licence No.'])});
+      if (!isEmpty(row['Social Security No.'])) identityNumbersList.push({type:'ssn', value: _to_string_id(row['Social Security No.'])});
+      if (!isEmpty(row['Passport No.'])) identityNumbersList.push({type:'passport_no', value: _to_string_id(row['Passport No.'])});
+    }
+    if (identityNumbersList.length > 0) addFieldIfNotEmpty('identityNumbers', identityNumbersList);
+
+    // aliases
+    const aliasColumns = ['aliases1','aliases2','aliases3','aliases4'];
+    const aliasNameTypes = {'aliases1':'AKA1','aliases2':'AKA2','aliases3':'AKA3','aliases4':'AKA4'};
+    const aliasesList = [];
+    for (const col of aliasColumns) {
+      const val = row[col];
+      if (!isEmpty(val)) {
+        const nameType = aliasNameTypes[col] || col.toUpperCase();
+        if (entityTypeUpper === 'PERSON') aliasesList.push({name:String(val), nameType});
+        else aliasesList.push({companyName:String(val), nameType});
+      }
+    }
+    if (aliasesList.length > 0) addFieldIfNotEmpty('aliases', aliasesList);
+
+    // security object
+    const securityEnabled = row['Security Enabled'];
+    if (!isEmpty(securityEnabled) && ['true','t','1','yes','y'].includes(String(securityEnabled).toLowerCase())) {
+      const securityTags = {};
+      if (!isEmpty(row['Tag 1'])) securityTags.orTags1 = row['Tag 1'];
+      if (!isEmpty(row['Tag 2'])) securityTags.orTags2 = row['Tag 2'];
+      if (!isEmpty(row['Tag 3'])) securityTags.orTags3 = row['Tag 3'];
+      clientData.security = securityTags;
+    }
 
     return clientData;
   }
@@ -134,19 +182,18 @@
       reader.onload = function (e) {
         const data = e.target.result;
         const workbook = XLSX.read(data, {type: 'array', cellDates: true});
-        console.log('Workbook loaded:', workbook.SheetNames);
-
         const firstSheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[firstSheetName];
 
         const rows = XLSX.utils.sheet_to_json(sheet, {defval: null, raw: false});
-        console.log('First 2 rows:', rows.slice(0,2));
-
         const transformedRaw = rows.map(transformRowToClientJson);
-        console.log('Transformed first row:', transformedRaw[0]);
 
-        // TEMP: bypass filter for debug
-        const transformed = transformedRaw; 
+        // Filter valid rows
+        const transformed = transformedRaw.filter(record => {
+          const hasEntityType = record.entityType && !isEmpty(record.entityType);
+          const hasNameInfo = ['name','forename','surname','companyName'].some(k => record[k] && !isEmpty(record[k]));
+          return hasEntityType || hasNameInfo;
+        });
 
         if (transformed.length === 0) {
           outputEl.textContent = 'No valid rows found for conversion.';
