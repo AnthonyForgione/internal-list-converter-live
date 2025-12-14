@@ -99,11 +99,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const identityMap = {
       "National Tax No.": "tax_no",
       "DUNS Number": "duns",
+      "Duns Number": "duns",              // match your sheet
       "Legal Entity Identifier (LEI)": "lei",
       "National ID": "national_id",
       "Driving Licence No.": "driving_licence",
       "Social Security No.": "ssn",
-      "Passport No.": "passport_no"
+      "Passport No.": "passport_no",      // keep both variants
+      "Passport No": "passport_no"
     };
 
     const ids = [];
