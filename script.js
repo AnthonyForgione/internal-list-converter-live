@@ -1,4 +1,4 @@
-/* =========================
+/* ========================= 
    DOM READY
 ========================= */
 document.addEventListener("DOMContentLoaded", () => {
@@ -87,26 +87,31 @@ document.addEventListener("DOMContentLoaded", () => {
     addIfNotEmpty(o, "profileNotes", normalizedRow["profilenotes"]);
 
     // Array fields
-    ["countryofregistrationcode","countryofaffiliationcode","formerlysanctionedregioncode","sanctionedregioncode","enhancedriskcountrycode","dateofregistrationarray","dateofbirtharray","residentofcode","citizenshipcode","sources","companyurls"].forEach(f => {
+    [
+      "countryofregistrationcode","countryofaffiliationcode","formerlysanctionedregioncode",
+      "sanctionedregioncode","enhancedriskcountrycode","dateofregistrationarray",
+      "dateofbirtharray","residentofcode","citizenshipcode","sources","companyurls"
+    ].forEach(f => {
       addIfNotEmpty(o, f, cleanAndSplit(normalizedRow[f]));
     });
 
-    // Identity numbers
+    // Identity numbers (using exact Excel column names)
     const identityMap = {
-      "nationaltaxno":"tax_no",
-      "dunsnumber":"duns",
-      "legalentityidentifierlei":"lei",
-      "nationalid":"national_id",
-      "drivinglicenceno":"driving_licence",
-      "socialsecurityno":"ssn",
-      "passportno":"passport_no"
+      "National Tax No.": "tax_no",
+      "DUNS Number": "duns",
+      "Legal Entity Identifier (LEI)": "lei",
+      "National ID": "national_id",
+      "Driving Licence No.": "driving_licence",
+      "Social Security No.": "ssn",
+      "Passport No.": "passport_no"
     };
+
     const ids = [];
-    Object.entries(identityMap).forEach(([colKey,idType])=>{
-      const val = normalizedRow[colKey];
-      if (!isEmpty(val)) ids.push({type:idType,value:String(val)});
+    Object.entries(identityMap).forEach(([colName, idType]) => {
+      const val = row[colName]; // use raw row, not normalized
+      if (!isEmpty(val)) ids.push({ type: idType, value: String(val) });
     });
-    addIfNotEmpty(o,"identityNumbers",ids);
+    addIfNotEmpty(o, "identityNumbers", ids);
 
     // Addresses
     const addr = {};
