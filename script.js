@@ -33,8 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isEmpty(value)) return null;
     if (typeof value === "string") {
       const trimmed = value.trim();
-      if (/^\d{4}$/.test(trimmed)) return trimmed; // YYYY
-      if (/^\d{4}-\d{2}$/.test(trimmed)) return trimmed; // YYYY-MM
+      if (/^\d{4}$/.test(trimmed)) return trimmed;        // YYYY
+      if (/^\d{4}-\d{2}$/.test(trimmed)) return trimmed;  // YYYY-MM
       if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed; // YYYY-MM-DD
       const d = new Date(trimmed);
       if (!isNaN(d)) return d.toISOString().slice(0,10);
@@ -46,13 +46,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(value);
   }
 
-  // Aggressive column cleaning for identity numbers
-  function cleanColumnName(col) {
-    return String(col || "")
-      .normalize("NFKD")      // decompose Unicode characters
-      .replace(/\s+/g, "")     // remove all spaces (ASCII & Unicode)
-      .replace(/[^\w]/g, "")   // remove punctuation
-      .toLowerCase();
+  // Single aggressive normalizer for column names
+  function normalizeKey(k) {
+    if (!k) return "";
+    return String(k)
+      .normalize("NFKD")      // decompose Unicode (handles accents etc.) [web:69]
+      .toLowerCase()
+      .replace(/\s+/g, "")    // remove all whitespace [web:73]
+      .replace(/[^\w]/g, ""); // remove punctuation
   }
 
   function cleanAndSplit(value) {
@@ -99,20 +100,28 @@ document.addEventListener("DOMContentLoaded", () => {
       addIfNotEmpty(o, f, cleanAndSplit(normalizedRow[f]));
     });
 
-    // Identity numbers (robust detection)
+    // Identity numbers (robust detection using normalized header)
     const ids = [];
     Object.entries(row).forEach(([col, val]) => {
       if (isEmpty(val)) return;
 
-      const normCol = cleanColumnName(col);
+      const normCol = normalizeKey(col);
 
-      if (normCol.includes("duns")) ids.push({ type: "duns", value: String(val) });
-      else if (normCol.includes("passport")) ids.push({ type: "passport_no", value: String(val) });
-      else if (normCol.includes("nationaltax")) ids.push({ type: "tax_no", value: String(val) });
-      else if (normCol.includes("lei")) ids.push({ type: "lei", value: String(val) });
-      else if (normCol.includes("nationalid")) ids.push({ type: "national_id", value: String(val) });
-      else if (normCol.includes("drivinglicence")) ids.push({ type: "driving_licence", value: String(val) });
-      else if (normCol.includes("socialsecurity")) ids.push({ type: "ssn", value: String(val) });
+      if (normCol.includes("duns")) {
+        ids.push({ type: "duns", value: String(val) });
+      } else if (normCol.includes("passport")) {
+        ids.push({ type: "passport_no", value: String(val) });
+      } else if (normCol.includes("nationaltax")) {
+        ids.push({ type: "tax_no", value: String(val) });
+      } else if (normCol.includes("lei")) {
+        ids.push({ type: "lei", value: String(val) });
+      } else if (normCol.includes("nationalid")) {
+        ids.push({ type: "national_id", value: String(val) });
+      } else if (normCol.includes("drivinglicence")) {
+        ids.push({ type: "driving_licence", value: String(val) });
+      } else if (normCol.includes("socialsecurity")) {
+        ids.push({ type: "ssn", value: String(val) });
+      }
     });
     addIfNotEmpty(o, "identityNumbers", ids);
 
@@ -125,27 +134,27 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isEmpty(normalizedRow["countrycode"])) addr.countryCode = String(normalizedRow["countrycode"]).toUpperCase().slice(0,2);
     if (Object.keys(addr).length) addIfNotEmpty(o,"addresses",[addr]);
 
-    // Aliases
+    // Aliases (still using the same normalizer)
     const aliases = [];
-    Object.keys(row).forEach(col=>{
+    Object.keys(row).forEach(col => {
       if (normalizeKey(col).startsWith("aliases")) {
-        if (!isEmpty(row[col])) aliases.push({name:String(row[col]), type:"Also Known As"});
+        if (!isEmpty(row[col])) aliases.push({ name: String(row[col]), type: "Also Known As" });
       }
     });
     addIfNotEmpty(o,"aliases",aliases);
 
     // Lists
     const lists = [];
-    for (let i=1;i<=4;i++){
+    for (let i = 1; i <= 4; i++) {
       if (isEmpty(row[`List ${i}`])) continue;
       const e = {};
       const v = row[`List ${i}`];
       addIfNotEmpty(e,"id",v);
       addIfNotEmpty(e,"name",v);
-      const active = String(row[`Active List ${i}`]).toLowerCase()==="true";
+      const active = String(row[`Active List ${i}`]).toLowerCase() === "true";
       e.active = active;
       e.listActive = active;
-      if (!isEmpty(v)) e.hierarchy=[{id:v,name:v}];
+      if (!isEmpty(v)) e.hierarchy = [{ id: v, name: v }];
       addIfNotEmpty(e,"since",parsePartialDate(row[`Since List ${i}`]));
       addIfNotEmpty(e,"to",parsePartialDate(row[`To List ${i}`]));
       lists.push(e);
@@ -164,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval:null, raw:false });
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: false });
 
       const records = rows.map(transformRow);
       if (!records.length) {
@@ -173,18 +182,18 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const jsonl = records.map(r=>JSON.stringify(r)).join("\n");
-      output.textContent = jsonl.slice(0,4000)+(jsonl.length>4000?"\n\n...preview truncated...":"");
+      const jsonl = records.map(r => JSON.stringify(r)).join("\n");
+      output.textContent = jsonl.slice(0,4000) + (jsonl.length > 4000 ? "\n\n...preview truncated..." : "");
 
-      const blob = new Blob([jsonl],{type:"application/json"});
+      const blob = new Blob([jsonl], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       downloadLink.href = url;
       downloadLink.download = "output.jsonl";
       downloadLink.style.display = "block";
       downloadLink.textContent = "Download JSONL file";
 
-    } catch(err){
-      output.textContent = "❌ Error: "+err.message;
+    } catch (err) {
+      output.textContent = "❌ Error: " + err.message;
       console.error(err);
     }
   }
