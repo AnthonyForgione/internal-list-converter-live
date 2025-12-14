@@ -1,6 +1,7 @@
 /* =========================
    DOM READY
 ========================= */
+
 document.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("fileInput");
   const convertBtn = document.getElementById("convertBtn");
@@ -19,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================
      Utilities
   ========================== */
+
   function isEmpty(value) {
     if (value === null || value === undefined) return true;
     if (typeof value === "number" && isNaN(value)) return true;
@@ -26,28 +28,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const v = value.trim().toLowerCase();
       return v === "" || v === "nan";
     }
-    if (Array.isArray(value) && value.length === 0) return true;
+    if (Array.isArray(value)) return value.length === 0;
     return false;
   }
 
-  function parseDateToYMD(value) {
-    const d = new Date(value);
-    return isNaN(d) ? null : d.toISOString().slice(0, 10);
+  function parsePartialDate(value) {
+    if (isEmpty(value)) return null;
+    const str = String(value).trim();
+    // Match YYYY or YYYY-MM or YYYY-MM-DD
+    const match = str.match(/^(\d{4})(?:[-\/](\d{1,2}))?(?:[-\/](\d{1,2}))?$/);
+    if (!match) return str; // not a date, return as-is
+    const year = match[1];
+    const month = match[2] ? match[2].padStart(2,'0') : null;
+    const day = match[3] ? match[3].padStart(2,'0') : null;
+    return [year, month, day].filter(Boolean).join('-');
   }
 
   function cleanAndSplit(value) {
     if (isEmpty(value)) return [];
-
-    // Only convert strings that look like dates (YYYY-MM-DD, DD/MM/YYYY, etc.)
-    const parsedDate = parseDateToYMD(value);
-    if (parsedDate) return [parsedDate];
-
     if (typeof value === "string") {
       if (value.includes(",")) return value.split(",").map(v => v.trim()).filter(Boolean);
       if (value.includes(";")) return value.split(";").map(v => v.trim()).filter(Boolean);
       return [value.trim()];
     }
-    return [value];
+    return [String(value)];
   }
 
   function addIfNotEmpty(obj, key, val) {
@@ -59,34 +63,35 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================
      Row transformation
   ========================== */
+
   function transformRow(row, aliasCols, dateCols) {
     const o = {};
 
     const getVal = c => {
       if (isEmpty(row[c])) return null;
-      // Only parse date if column is a known date column
-      if (dateCols.has(c)) return parseDateToYMD(row[c]) || row[c];
+      // profileId should remain text, dateCols use parsePartialDate
+      if (c === "profileId") return String(row[c]).trim();
+      if (dateCols.has(c)) return parsePartialDate(row[c]);
       return String(row[c]).trim();
     };
 
     const getArr = c => cleanAndSplit(row[c]);
 
-    // Standard fields
+    // Simple fields
     [
       "type","profileId","action","activeStatus","name","suffix","gender",
-      "profileNotes","lastModifiedDate"
+      "profileNotes"
     ].forEach(f => addIfNotEmpty(o, f, getVal(f)));
 
     // Array fields
     [
       "countryOfRegistrationCode","countryOfAffiliationCode",
-      "formerlySanctionedRegionCode","sanctionedRegionCode",
-      "enhancedRiskCountryCode","dateOfRegistrationArray",
-      "dateOfBirthArray","residentOfCode","citizenshipCode",
+      "formerlySanctionedRegionCode","sanctionedRegionCode","enhancedRiskCountryCode",
+      "dateOfRegistrationArray","dateOfBirthArray","residentOfCode","citizenshipCode",
       "sources","companyUrls"
     ].forEach(f => addIfNotEmpty(o, f, getArr(f)));
 
-    /* Identity numbers */
+    // Identity numbers
     const ids = [];
     const type = String(o.type || "").toUpperCase();
 
@@ -102,18 +107,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (type === "PERSON") {
       [["National ID","national_id"],
-       ["Driving Licence No.\t","driving_licence"],
+       ["Driving Licence No.","driving_licence"],
        ["Social Security No.","ssn"],
-       ["Passport No.\t","passport_no"]
+       ["Passport No.","passport_no"]
       ].forEach(([c,t]) => {
         const v = getVal(c);
         if (!isEmpty(v)) ids.push({ type: t, value: String(v) });
       });
     }
-
     addIfNotEmpty(o, "identityNumbers", ids);
 
-    /* Address */
+    // Address
     const addr = {};
     if (!isEmpty(row["Address Line"])) addr.line = String(row["Address Line"]);
     if (!isEmpty(row.city)) addr.city = String(row.city);
@@ -122,14 +126,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isEmpty(row.countryCode)) addr.countryCode = String(row.countryCode).toUpperCase().slice(0,2);
     if (Object.keys(addr).length) o.addresses = [addr];
 
-    /* Aliases */
+    // Aliases
     const aliases = [];
     aliasCols.forEach(c => {
       if (!isEmpty(row[c])) aliases.push({ name: String(row[c]), type: "Also Known As" });
     });
     addIfNotEmpty(o, "aliases", aliases);
 
-    /* Lists */
+    // Lists
     const lists = [];
     for (let i=1;i<=4;i++) {
       if (isEmpty(row[`List ${i}`])) continue;
@@ -153,37 +157,31 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =========================
      File processing
   ========================== */
+
   async function processExcel(file) {
     try {
       output.textContent = "⏳ Processing file...";
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data, { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: null, raw:false });
 
       if (!rows.length) {
-        output.textContent = "❌ No rows found in file.";
+        output.textContent = "❌ No rows found in the Excel file.";
         downloadLink.style.display = "none";
         return;
       }
 
-      // Determine alias columns
-      const aliasCols = Object.keys(rows[0]).filter(c => c.toLowerCase().startsWith("aliases") && /\d+$/.test(c.slice(7)));
+      // Identify alias columns dynamically
+      const aliasCols = Object.keys(rows[0]).filter(c => c.toLowerCase().startsWith("aliases") || c.toLowerCase().startsWith("alias"));
 
-      // Define which columns are real dates
-      const dateCols = new Set([
-        "dateOfRegistrationArray",
-        "dateOfBirthArray",
-        "Since List 1","To List 1",
-        "Since List 2","To List 2",
-        "Since List 3","To List 3",
-        "Since List 4","To List 4"
-      ]);
+      // Identify date columns (partial dates)
+      const dateCols = new Set(Object.keys(rows[0]).filter(c => /date/i.test(c)));
 
       const records = rows.map(r => transformRow(r, aliasCols, dateCols));
       const jsonl = records.map(r => JSON.stringify(r)).join("\n");
 
-      const blob = new Blob([jsonl], { type: "application/jsonl" });
+      const blob = new Blob([jsonl], { type: "application/json" });
       const url = URL.createObjectURL(blob);
 
       downloadLink.href = url;
@@ -191,8 +189,8 @@ document.addEventListener("DOMContentLoaded", () => {
       downloadLink.style.display = "block";
       downloadLink.textContent = "Download JSONL";
 
-      // Show preview (first 2000 chars)
-      output.textContent = jsonl.slice(0,2000) + (jsonl.length>2000 ? "\n\n...preview truncated..." : "");
+      // Preview first 4000 chars
+      output.textContent = jsonl.slice(0,4000) + (jsonl.length > 4000 ? "\n\n...preview truncated..." : "");
     } catch (err) {
       output.textContent = "❌ Error: " + err.message;
       console.error(err);
