@@ -46,14 +46,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(value);
   }
 
-  // Single aggressive normalizer for column names
   function normalizeKey(k) {
     if (!k) return "";
     return String(k)
-      .normalize("NFKD")      // decompose Unicode (handles accents etc.) [web:69]
+      .normalize("NFKD")
       .toLowerCase()
-      .replace(/\s+/g, "")    // remove all whitespace [web:73]
-      .replace(/[^\w]/g, ""); // remove punctuation
+      .replace(/\s+/g, "")
+      .replace(/[^\w]/g, "");
   }
 
   function cleanAndSplit(value) {
@@ -100,16 +99,17 @@ document.addEventListener("DOMContentLoaded", () => {
       addIfNotEmpty(o, f, cleanAndSplit(normalizedRow[f]));
     });
 
-    // Identity numbers (robust detection using normalized header)
+    // Identity numbers (trim header to remove spaces/tabs)
     const ids = [];
     Object.entries(row).forEach(([col, val]) => {
       if (isEmpty(val)) return;
 
-      const normCol = normalizeKey(col);
+      const trimmedCol = String(col).trim();       // removes trailing tab from "Passport No.\t"
+      const normCol = normalizeKey(trimmedCol);
 
       if (normCol.includes("duns")) {
         ids.push({ type: "duns", value: String(val) });
-      } else if (normCol.includes("passport")) {
+      } else if (normCol.includes("passportno") || normCol.includes("passportnumber")) {
         ids.push({ type: "passport_no", value: String(val) });
       } else if (normCol.includes("nationaltax")) {
         ids.push({ type: "tax_no", value: String(val) });
@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isEmpty(normalizedRow["countrycode"])) addr.countryCode = String(normalizedRow["countrycode"]).toUpperCase().slice(0,2);
     if (Object.keys(addr).length) addIfNotEmpty(o,"addresses",[addr]);
 
-    // Aliases (still using the same normalizer)
+    // Aliases
     const aliases = [];
     Object.keys(row).forEach(col => {
       if (normalizeKey(col).startsWith("aliases")) {
